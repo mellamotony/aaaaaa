@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import Producto,Cliente,Pedido, DetallePedido
+from .models import Producto,Cliente,Pedido, DetallePedido,Usuario
 from django.core.serializers import serialize
 
 
@@ -14,60 +14,63 @@ from django.core.serializers import serialize
 def home (request):
     return render ( request, 'home.html')
 
-def singup (request):
-    if request.method == 'GET':
-        return render(request, 'singup.html',
-            {'form': UserCreationForm})
+@csrf_exempt
+def singup(request):
+    if request.method == 'POST':
+        data = json.loads(request.body.decode('utf-8'))
+        
+        # Extraer los campos del JSON
+        nombre = data.get('nombre')
+        apellido = data.get('apellido')
+        email = data.get('email')
+        password = data.get('password')
+
+        # Crear una nueva instancia del modelo Producto
+        nuevo_usuario = Usuario(
+            nombre=nombre,
+            apellido=apellido,
+            email=email,
+            password=password,
+        )
+
+        # Guardar el nuevo producto en la base de datos
+        nuevo_usuario.save()
+
+        return JsonResponse({'mensaje': 'Usuario creado correctamente'})
+
     else:
-        # Utiliza el método get() para acceder a los valores del formulario y evitar MultiValueDictKeyError
-        password1 = request.POST.get('password1', '')
-        password2 = request.POST.get('password2', '')
-
-        if password1 == password2:
-            try:
-                # Crea un nuevo formulario de usuario y valida los datos
-                form = UserCreationForm(request.POST)
-                if form.is_valid():
-                    form.save()
-                    print('Usuario creado con exito')
-                    return redirect(login)
-                else:
-                    #return JsonResponse({'error': 'El usuario ya existe'})
-                    print('El usuario ya existe')
-                    return redirect(singup)
-            except Exception as e:
-                #return JsonResponse({'error': 'Error al crear el usuario'})
-                print('Error al crear el usuario')
-                return redirect(singup)
-        else:
-            #return JsonResponse({'error': 'Contraseña no es igual'})
-            print('La contraseña no es igual')
-            return redirect(login)
-
+        return JsonResponse({'mensaje': 'Método no permitido'}, status=405)
+    
+@csrf_exempt
 def singout(request):
     logout(request)
-    return redirect('singin')
+    return JsonResponse({'mensaje': 'Cerrando cesion con exito'})
 
+@csrf_exempt
 def singin(request):
-    if request.method == 'GET':
-        return render(request, 'singin.html',{
-            'form': AuthenticationForm
-        })
-    else:
-        # Verifica si las claves 'username' y 'password' están presentes en request.POST
-        if 'username' in request.POST and 'password' in request.POST:
-            username = request.POST['username']
-            password = request.POST['password']
+    if request.method == 'POST':
+        # Verifica si el cuerpo de la solicitud contiene datos JSON
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Formato JSON no válido'}, status=400)
+
+        # Verifica si las claves 'username' y 'password' están presentes en los datos JSON
+        if 'username' in data and 'password' in data:
+            username = data['username']
+            password = data['password']
 
             user = authenticate(request, username=username, password=password)
 
             if user is not None:
                 login(request, user)
-                return redirect('home')
+                return JsonResponse({'success': True, 'message': 'Inicio de sesión exitoso'})
             else:
-                return render(request, 'singin.html', {'form': AuthenticationForm, 'error': 'Usuario o contraseña incorrecta'})
+                return JsonResponse({'error': 'Usuario o contraseña incorrecta'}, status=401)
         else:
-            return render(request, 'singin.html', {'form': AuthenticationForm, 'error': 'Datos de inicio de sesión incompletos'})
+            return JsonResponse({'error': 'Datos de inicio de sesión incompletos'}, status=400)
+    else:
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 @csrf_exempt  # Usado para desactivar la protección CSRF,
 def recibir_producto(request):

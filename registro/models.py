@@ -2,20 +2,6 @@ from django.db import models
 # en models.py
 from django.contrib.auth.models import AbstractUser, Group, Permission
 
-class Usuario(AbstractUser):
-    # Agrega campos adicionales si es necesario
-
-    # Agrega related_name a la relación con grupos
-    groups = models.ManyToManyField(Group, related_name='usuarios_groups')
-
-    # Agrega related_name a la relación con permisos
-    user_permissions = models.ManyToManyField(Permission, related_name='usuarios_permissions')
-
-    class Meta:
-        permissions = [
-            ("can_do_something", "Puede hacer algo"),
-        ]
-# Create your models here.
 
 class Cliente(models.Model):
     nombre = models.CharField(max_length=100)
@@ -66,4 +52,14 @@ class RegistroVentas(models.Model):
     def __str__(self):
         return f"Venta {self.id} - Total: {self.total_ventas}"
     
+class Usuario(models.Model):
+    nombre = models.CharField(max_length=255)
+    apellido = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.nombre  # Puedes ajustar esto según tus necesidades
+
+    class Meta:
+        db_table = 'usuario' 
